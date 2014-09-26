@@ -108,22 +108,23 @@
 // per address. This is because the software (this program) deals only in virtual addresses,
 // whereas the DMA controller can only access RAM via physical address. (If that's not confusing
 // enough, it writes to peripherals by their bus addresses.)
-typedef struct {
+struct page_map_t
+{
 	uint8_t *virtaddr;
 	uint32_t physaddr;
-} page_map_t;
+};
 
 // Control Block (CB) - this tells the DMA controller what to do.
-typedef struct {
-	unsigned int
-		info,		// Transfer Information (TI)
-		src,		// Source address (physical)
-		dst,		// Destination address (bus)
-		length,		// Length in bytes (not words!)
-		stride,		// We don't care about this
-		next,		// Pointer to next control block
-		pad[2];		// These are "reserved" (unused)
-} dma_cb_t;
+struct dma_cb_t
+{
+	unsigned	info;		// Transfer Information (TI)
+	unsigned	src;		// Source address (physical)
+	unsigned	dst;		// Destination address (bus)
+	unsigned	length;		// Length in bytes (not words!)
+	unsigned	stride;		// We don't care about this
+	unsigned	next;		// Pointer to next control block
+	unsigned	pad[2];		// These are "reserved" (unused)
+};
 
 // Contains arrays of control blocks and their related samples.
 // One pixel needs 72 bits (24 bits for the color * 3 to represent them on the wire).
