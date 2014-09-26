@@ -11,8 +11,10 @@ if(ENABLE_SPIDEV)
 	add_executable(gpio2spi switchPinCtrl.c)
 endif(ENABLE_SPIDEV)
 
-add_executable(test_ws2812b TestWS2812B.cpp)
-target_link_libraries(test_ws2812b hyperion)
+if(ENABLE_WS2812BPWM)
+	add_executable(test_ws2812b TestWS2812B.cpp)
+	target_link_libraries(test_ws2812b hyperion)
+endif(ENABLE_WS2812BPWM)
 
 add_executable(test_configfile
 		TestConfigFile.cpp)
