@@ -306,10 +306,10 @@ int LedDeviceWS2812b::write(const std::vector<ColorRgb> &ledValues)
 	clock_gettime(CLOCK_PROCESS_CPUTIME_ID, &timeStart);
 #endif
 
+	size_t oldSize = mLedCount; // save old size to see if it changed
 	mLedCount = ledValues.size();
 
 	// Read data from LEDBuffer[], translate it into wire format, and write to PWMWaveform
-	unsigned int colorBits = 0;			// Holds the GRB color before conversion to wire bit pattern
 	unsigned int wireBit = 1;			// Holds the current bit we will set in PWMWaveform, start with 1 and skip the other two for speed
 
 	// Copy PWM waveform to DMA's data buffer
@@ -317,14 +317,49 @@ int LedDeviceWS2812b::write(const std::vector<ColorRgb> &ledValues)
 	struct control_data_s *ctl = (struct control_data_s *)virtbase;
 	dma_cb_t *cbp = ctl->cb;
 
-	// 72 bits per pixel / 32 bits per word = 2.25 words per pixel
-	// Add 1 to make sure the PWM FIFO gets the message: "we're sending zeroes"
-	// Times 4 because DMA works in bytes, not words
-	cbp->length = ((mLedCount * 2.25) + 1) * 4;
-	if(cbp->length > NUM_DATA_WORDS * 4)
+	// change end of transimission data to 0s and restore old possition
+	// only do it if the length changed
+	if (mLedCount != oldSize)
 	{
-		cbp->length = NUM_DATA_WORDS * 4;
-		mLedCount = (NUM_DATA_WORDS - 1) / 2.25;
+		// 72 bits per pixel / 32 bits per word = 2.25 words per pixel
+		// Add 1 to make sure the PWM FIFO gets the message: "we're sending zeroes"
+		// Times 4 because DMA works in bytes, not words
+		cbp->length = ((mLedCount * 2.25) + 1) * 4;
+		if(cbp->length > NUM_DATA_WORDS * 4)
+		{
+			cbp->length = NUM_DATA_WORDS * 4;
+			mLedCount = (NUM_DATA_WORDS - 1) / 2.25;
+		}
+
+		// re-check
+		if (mLedCount != oldSize)
+		{
+			if (oldSize != 0)
+			{
+				// recreate pattern at the end
+				unsigned int maxWireBits = oldSize * 3 * 8  * 3; // 3 colors, 8 bit per color, 3 "baud" per bit
+				unsigned int wordOffset = (int)(maxWireBits / 32);
+				int rest = (maxWireBits % 32); // used Bits at the end
+				unsigned int bitPattern = 0x92492492 >> rest; // set new bit pattern: 92492492 = 1001 0010 0100 1001 0010 0100 1001 0010
+
+				PWMWaveform[wordOffset] |= bitPattern;
+			}
+
+			if (mLedCount != 0)
+			{
+				//clear old end of pattern
+				unsigned int maxWireBits = mLedCount * 3 * 8  * 3; // 3 colors, 8 bit per color, 3 "baud" per bit
+				unsigned int wordOffset = (int)(maxWireBits / 32);
+				int rest = (maxWireBits % 32); // used Bits at the end
+				unsigned int bitPattern = 0xFFFFFFFF >> rest; // set new bit pattern
+
+	#ifdef WS2812_ASM_OPTI
+				PWMWaveform[wordOffset] = arm_Bit_Clear_imm(PWMWaveform[wordOffset], bitPattern);
+	#else
+				PWMWaveform[wordOffset] &= ~bitPattern;
+	#endif
+			}
+		}
 	}
 
 #ifdef WS2812_ASM_OPTI
@@ -334,15 +369,9 @@ int LedDeviceWS2812b::write(const std::vector<ColorRgb> &ledValues)
 
 	for(size_t i=0; i<mLedCount; i++)
 	{
-		// Create bits necessary to represent one color triplet (in GRB, not RGB, order)
-		//printf("RGB: %d, %d, %d\n", ledValues[i].red, ledValues[i].green, ledValues[i].blue);
-		colorBits = ((unsigned int)ledValues[i].red << 8) | ((unsigned int)ledValues[i].green << 16) | ledValues[i].blue;
-		//printBinary(colorBits, 24);
-		//printf(" (binary, GRB order)\n");
-
-		// Iterate through color bits to get wire bits
-		for(int j=23; j>=0; j--) {
 #ifdef WS2812_ASM_OPTI
+		unsigned int colorBits = ((unsigned int)ledValues[i].red << 8) | ((unsigned int)ledValues[i].green << 16) | ledValues[i].blue;
+		for(int j=23; j>=0; j--) {
 			// Fetch word the bit is in
 			unsigned int wordOffset = (int)(wireBit / 32);
 			wireBit +=3;
@@ -354,11 +383,22 @@ int LedDeviceWS2812b::write(const std::vector<ColorRgb> &ledValues)
 			}
 
 			startbitPattern = arm_ror_imm(startbitPattern, 3);
+		}
+
 #else
+		unsigned int colorBits = 0; // Holds the GRB color before conversion to wire bit pattern
+		// Create bits necessary to represent one color triplet (in GRB, not RGB, order)
+		//printf("RGB: %d, %d, %d\n", ledValues[i].red, ledValues[i].green, ledValues[i].blue);
+		colorBits = ((unsigned int)ledValues[i].red << 8) | ((unsigned int)ledValues[i].green << 16) | ledValues[i].blue;
+		//printBinary(colorBits, 24);
+		//printf(" (binary, GRB order)\n");
+
+		// Iterate through color bits to get wire bits
+		for(int j=23; j>=0; j--) {
+
 			unsigned char colorBit = (colorBits & (1 << j)) ? 1 : 0; // Holds current bit out of colorBits to be processed
 			setPWMBit(wireBit, colorBit);
 			wireBit +=3;
-#endif
 			/* old code for better understanding
 			switch(colorBit) {
 				case 1:
@@ -375,73 +415,14 @@ int LedDeviceWS2812b::write(const std::vector<ColorRgb> &ledValues)
 					break;
 			}*/
 		}
-	}
-
-#ifdef WS2812_ASM_OPTI
-	// calculate the bits manually since it is not needed with asm
-	//wireBit += mLedCount * 24 *3;
-	//printf(" %d\n", wireBit);
 #endif
-	//remove one to undo optimization
-	wireBit --;
-
-#ifdef WS2812_ASM_OPTI
-	int rest = 32 - wireBit % 32; // 64: 32 - used Bits
-	startbitPattern = (1 << (rest-1)); // set new bitpattern to start at the benigining of one bit (3 bit in wave form)
-	rest += 32; // add one int extra for pwm
-
-//	printBinary(startbitPattern, 32);
-//	printf(" startbit\n");
-
-	unsigned int oldwireBitValue = wireBit;
-	unsigned int oldbitPattern = startbitPattern;
-
-	// zero rest of the 4 bytes / int so that output is 0 (no data is send)
-	for (int i = 0; i < rest; i += 3)
-	{
-		unsigned int wordOffset = (int)(wireBit / 32);
-		wireBit += 3;
-		PWMWaveform[wordOffset] = arm_Bit_Clear_imm(PWMWaveform[wordOffset], startbitPattern);
-		startbitPattern = arm_ror_imm(startbitPattern, 3);
 	}
-
-#else
-	// fill up the bytes
-	int rest = 32 - wireBit % 32 + 32; // 64: 32 - used Bits + 32 (one int extra for pwm)
-	unsigned int oldwireBitValue = wireBit;
-
-	// zero rest of the 4 bytes / int so that output is 0 (no data is send)
-	for (int i = 0; i < rest; i += 3)
-	{
-		setPWMBit(wireBit, 0);
-		wireBit += 3;
-	}
-#endif
 
 	memcpy ( ctl->sample, PWMWaveform, cbp->length );
 
 	// Enable DMA and PWM engines, which should now send the data
 	startTransfer();
 
-	// restore bit pattern
-	wireBit = oldwireBitValue;
-
-#ifdef WS2812_ASM_OPTI
-	startbitPattern = oldbitPattern;
-	for (int i = 0; i < rest; i += 3)
-	{
-		unsigned int wordOffset = (int)(wireBit / 32);
-		wireBit += 3;
-		PWMWaveform[wordOffset] |= startbitPattern;
-		startbitPattern = arm_ror_imm(startbitPattern, 3);
-	}
-#else
-	for (int i = 0; i < rest; i += 3)
-	{
-		setPWMBit(wireBit, 1);
-		wireBit += 3;
-	}
-#endif
 
 #ifdef BENCHMARK
 	clock_gettime(CLOCK_PROCESS_CPUTIME_ID, &timeEnd);
