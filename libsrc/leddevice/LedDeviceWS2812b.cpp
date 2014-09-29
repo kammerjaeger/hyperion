@@ -272,7 +272,7 @@ static inline __attribute__((always_inline)) uint32_t arm_ror_imm(uint32_t v, ui
 	return d;
 }
 
-// rotate register, used to move the 1 around, add 1 to int counter on carry
+// rotate register, used to move the 1 around and add 1 to int counter on carry
 static inline __attribute__((always_inline)) uint32_t arm_ror_imm_add_on_carry(uint32_t v, uint32_t sh, uint32_t inc)
 {
 	  uint32_t d;
@@ -371,9 +371,10 @@ int LedDeviceWS2812b::write(const std::vector<ColorRgb> &ledValues)
 	{
 #ifdef WS2812_ASM_OPTI
 		unsigned int colorBits = ((unsigned int)ledValues[i].red << 8) | ((unsigned int)ledValues[i].green << 16) | ledValues[i].blue;
+		unsigned int wordOffset = 0;
 		for(int j=23; j>=0; j--) {
 			// Fetch word the bit is in
-			unsigned int wordOffset = (int)(wireBit / 32);
+			//unsigned int wordOffset = (int)(wireBit / 32);
 			wireBit +=3;
 
 			if (colorBits & (1 << j)) {
@@ -382,7 +383,7 @@ int LedDeviceWS2812b::write(const std::vector<ColorRgb> &ledValues)
 				PWMWaveform[wordOffset] = arm_Bit_Clear_imm(PWMWaveform[wordOffset], startbitPattern);
 			}
 
-			startbitPattern = arm_ror_imm(startbitPattern, 3);
+			startbitPattern = arm_ror_imm_add_on_carry(startbitPattern, 3, wordOffset);
 		}
 
 #else
