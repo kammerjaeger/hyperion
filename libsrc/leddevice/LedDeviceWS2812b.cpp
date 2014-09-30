@@ -369,12 +369,13 @@ int LedDeviceWS2812b::write(const std::vector<ColorRgb> &ledValues)
 
 	for(size_t i=0; i<mLedCount; i++)
 	{
+
 #ifdef WS2812_ASM_OPTI
 		unsigned int colorBits = ((unsigned int)ledValues[i].red << 8) | ((unsigned int)ledValues[i].green << 16) | ledValues[i].blue;
 		unsigned int wordOffset = 0;
 		for(int j=23; j>=0; j--) {
 			// Fetch word the bit is in
-			//unsigned int wordOffset = (int)(wireBit / 32);
+			wordOffset = (int)(wireBit / 32);
 			wireBit +=3;
 
 			if (colorBits & (1 << j)) {
@@ -383,7 +384,7 @@ int LedDeviceWS2812b::write(const std::vector<ColorRgb> &ledValues)
 				PWMWaveform[wordOffset] = arm_Bit_Clear_imm(PWMWaveform[wordOffset], startbitPattern);
 			}
 
-			startbitPattern = arm_ror_imm_add_on_carry(startbitPattern, 3, wordOffset);
+			startbitPattern = arm_ror(startbitPattern, 3);
 		}
 
 #else
@@ -417,6 +418,7 @@ int LedDeviceWS2812b::write(const std::vector<ColorRgb> &ledValues)
 			}*/
 		}
 #endif
+
 	}
 
 	memcpy ( ctl->sample, PWMWaveform, cbp->length );
