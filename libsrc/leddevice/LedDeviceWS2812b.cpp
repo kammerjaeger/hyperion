@@ -27,14 +27,16 @@
 // Base addresses for GPIO, PWM, PWM clock, and DMA controllers (physical, not bus!)
 // These will be "memory mapped" into virtual RAM so that they can be written and read directly.
 // -------------------------------------------------------------------------------------------------
-#define DMA_BASE		0x20007000
-#define DMA_LEN			0x24
-#define PWM_BASE		0x2020C000
-#define PWM_LEN			0x28
-#define CLK_BASE	    0x20101000
-#define CLK_LEN			0xA8
-#define GPIO_BASE		0x20200000
-#define GPIO_LEN		0xB4
+#define DMA_BASE			0x20007000
+#define DMA_LEN				0x24
+#define DMA_CHANNEL_OFFSET  0x100
+#define DMA_LAST_DMA_OFFSET	14 * DMA_CHANNEL_OFFSET
+#define PWM_BASE			0x2020C000
+#define PWM_LEN				0x28
+#define CLK_BASE	    	0x20101000
+#define CLK_LEN				0xA8
+#define GPIO_BASE			0x20200000
+#define GPIO_LEN			0xB4
 
 // GPIO
 // -------------------------------------------------------------------------------------------------
@@ -164,7 +166,8 @@
 // Default CS word
 #define DMA_CS_CONFIGWORD	(8 << DMA_CS_PANIC_PRI) | \
 							(8 << DMA_CS_PRIORITY) | \
-							(1 << DMA_CS_WAIT_FOR)
+							(1 << DMA_CS_WAIT_FOR) | \
+							(1 << DMA_CS_DISDEBUG)
 
 // DREQ lines (page 61, most DREQs omitted)
 #define DMA_DREQ_ALWAYS		0
@@ -321,6 +324,7 @@ int LedDeviceWS2812b::write(const std::vector<ColorRgb> &ledValues)
 	// only do it if the length changed
 	if (mLedCount != oldSize)
 	{
+		printf("WS2812b size changed from %d to %d!\n", oldSize, mLedCount);
 		// 72 bits per pixel / 32 bits per word = 2.25 words per pixel
 		// Add 1 to make sure the PWM FIFO gets the message: "we're sending zeroes"
 		// Times 4 because DMA works in bytes, not words
@@ -421,6 +425,15 @@ int LedDeviceWS2812b::write(const std::vector<ColorRgb> &ledValues)
 
 	}
 
+	if (dma_reg[DMA_CS] & (1<< DMA_CS_ACTIVE))
+		{
+		printf("Warning: WS2812b DMA not free yet!\n");
+
+		while (dma_reg[DMA_CS] & (1<< DMA_CS_ACTIVE)){
+
+		}
+		usleep(60);
+		}
 	memcpy ( ctl->sample, PWMWaveform, cbp->length );
 
 	// Enable DMA and PWM engines, which should now send the data
@@ -527,6 +540,12 @@ void LedDeviceWS2812b::terminate(int dummy) {
 		pwm_reg[PWM_CTL] = (1 << PWM_CTL_CLRF1);
 	}
 
+	//unmap peripherals, not really needed but we want to be clean :-)
+	unmap_peripheral((void*) dma_reg_map, DMA_LAST_DMA_OFFSET + DMA_LEN);
+	unmap_peripheral((void*) pwm_reg, PWM_LEN);
+	unmap_peripheral((void*) clk_reg, CLK_LEN);
+	unmap_peripheral((void*) gpio_reg, GPIO_LEN);
+
 	// Free the allocated memory
 	if(page_map != 0)
 	{
@@ -591,6 +610,13 @@ void * LedDeviceWS2812b::map_peripheral(uint32_t base, uint32_t len)
 	return vaddr;
 }
 
+void LedDeviceWS2812b::unmap_peripheral(void * base, uint32_t len){
+	if (munmap(base, len) == -1)
+		{
+			perror("Error un-mmapping the DMA: %m");
+		}
+}
+
 // Zero out the PWM waveform buffer
 void LedDeviceWS2812b::clearPWMBuffer()
 {
@@ -631,8 +657,33 @@ void LedDeviceWS2812b::initHardware()
 
 	// Set up peripheral access
 	// ---------------------------------------------------------------
-	dma_reg = (unsigned int *) map_peripheral(DMA_BASE, DMA_LEN);
-	dma_reg += 0x000;
+	bool foundDMA = false;
+	dma_reg_map = (unsigned int *) map_peripheral(DMA_BASE , DMA_LAST_DMA_OFFSET + DMA_LEN); // map all (first 15) DMA Register maps
+	dma_reg = dma_reg_map;
+	for (int i = 0; i < 15; i++){
+
+		if (((dma_reg[DMA_CS]) & (1 << DMA_CS_ACTIVE)) > 0)
+		{
+			printf("WS2812b DMA %d used!\n", i);
+			printBinary(dma_reg[DMA_CS], 32);
+		    printf(" (DMA Control register state)\n");
+		}
+		else
+		{
+			printf("WS2812b uses DMA: %d\n", i);
+			//printBinary(dma_reg[DMA_CS], 32);
+			//printf(" (DMA Control register state)\n");
+			foundDMA = true;
+			break;
+		}
+		dma_reg += DMA_CHANNEL_OFFSET; // DMA register offset
+	}
+
+	if (!foundDMA){
+		fatal("Failed find a free DMA\n");
+		return;
+	}
+
 	pwm_reg = (unsigned int *) map_peripheral(PWM_BASE, PWM_LEN);
 	clk_reg = (unsigned int *) map_peripheral(CLK_BASE, CLK_LEN);
 	gpio_reg = (unsigned int *) map_peripheral(GPIO_BASE, GPIO_LEN);
