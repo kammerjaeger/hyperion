@@ -60,7 +60,7 @@ void printBinary(unsigned int i, unsigned int bits) {
 }
 
 void testColorVector(LedDeviceWS2812b * ledDevice, std::vector<ColorRgb> * buff, const char* runName){
-	printf("Running test: %s\n", runName);
+	//printf("Running test: %s\n", runName);
 	unsigned int ledCnt = buff->size();
 	ledDevice->write(*buff);
 	struct control_data_s *ctl = (struct control_data_s *) ledDevice->virtbase;
@@ -190,6 +190,17 @@ int main(int argc, char** argv)
 
 	buff = new std::vector<ColorRgb>(ledCnt -1, ColorRgb::RED);
 	testColorVector(ledDevice, buff, "RED3");
+	delete buff;
+
+	buff = new std::vector<ColorRgb>(ledCnt -1, ColorRgb::BLACK);
+	for (unsigned int i = 0; i < buff->size(); i++){
+		buff->at(i) = ColorRgb::YELLOW;
+		testColorVector(ledDevice, buff, "Counting");
+	}
+	delete buff;
+
+	buff = new std::vector<ColorRgb>(ledCnt -1, ColorRgb::BLACK);
+	testColorVector(ledDevice, buff, "BLACK");
 	delete buff;
 
 	delete ledDevice;
