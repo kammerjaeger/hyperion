@@ -347,6 +347,8 @@ int LedDeviceWS2812b::write(const std::vector<ColorRgb> &ledValues)
 				unsigned int bitPattern = 0x92492492 >> rest; // set new bit pattern: 92492492 = 1001 0010 0100 1001 0010 0100 1001 0010
 
 				PWMWaveform[wordOffset] |= bitPattern;
+				PWMWaveform[wordOffset+1] = 0x92492492 << (32-rest) | 0x92492492 >> (rest + 1); // not sure if right, tried it by hand and it work. if wrong please correct :-D
+
 			}
 
 			if (mLedCount != 0)
@@ -362,6 +364,7 @@ int LedDeviceWS2812b::write(const std::vector<ColorRgb> &ledValues)
 	#else
 				PWMWaveform[wordOffset] &= ~bitPattern;
 	#endif
+				PWMWaveform[wordOffset+1] = 0x0; // clear next bit too
 			}
 		}
 	}
