@@ -371,18 +371,17 @@ int LedDeviceWS2812b::write(const std::vector<ColorRgb> &ledValues)
 
 #ifdef WS2812_ASM_OPTI
 	unsigned int startbitPattern = 0x40000000; // = 0100 0000  0000 0000  0000 0000  0000 0000 pattern
+	unsigned int wordOffset = 0;
 #endif
-
 
 	for(size_t i=0; i<mLedCount; i++)
 	{
 
 #ifdef WS2812_ASM_OPTI
 		unsigned int colorBits = ((unsigned int)ledValues[i].red << 8) | ((unsigned int)ledValues[i].green << 16) | ledValues[i].blue;
-		unsigned int wordOffset = 0;
 		for(int j=23; j>=0; j--) {
 			// Fetch word the bit is in
-			wordOffset = (int)(wireBit / 32);
+//			wordOffset = (int)(wireBit / 32);
 			wireBit +=3;
 
 			if (colorBits & (1 << j)) {
@@ -392,6 +391,13 @@ int LedDeviceWS2812b::write(const std::vector<ColorRgb> &ledValues)
 			}
 
 			startbitPattern = arm_ror(startbitPattern, 3);
+			if (startbitPattern > 0x10000000){
+				wordOffset++;
+			}
+
+//			if (wordOffset != (int)(wireBit / 32)){
+//				printf("wordOffset mismatch: wordOffset %d | shuld be %d | wireBit %d!\n", wordOffset, (wireBit / 32), wireBit);
+//			}
 		}
 
 #else
@@ -433,10 +439,11 @@ int LedDeviceWS2812b::write(const std::vector<ColorRgb> &ledValues)
 		printf("Warning: WS2812b DMA not free yet!\n");
 
 		while (dma_reg[DMA_CS] & (1<< DMA_CS_ACTIVE)){
-
 		}
+
 		usleep(60);
 		}
+
 	memcpy ( ctl->sample, PWMWaveform, cbp->length );
 
 	// Enable DMA and PWM engines, which should now send the data
