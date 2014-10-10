@@ -192,7 +192,7 @@ private:
 	void startTransfer();
 
 	void clearPWMBuffer();
-	void setPWMBit(unsigned int bitPos, unsigned char bit);
+	void setPWMBit(unsigned int* writeLocation, unsigned int bitPos, unsigned char bit);
 
 	unsigned int mem_phys_to_virt(uint32_t phys);
 	unsigned int mem_virt_to_phys(void *virt);

@@ -257,9 +257,9 @@ LedDeviceWS2812b::LedDeviceWS2812b() :
 
 	while ((wireBit + 3) < ((NUM_DATA_WORDS) * 4 * 8))
 	{
-		setPWMBit(wireBit++, 1);
-		setPWMBit(wireBit++, 0); // just init it with 0
-		setPWMBit(wireBit++, 0);
+		setPWMBit(PWMWaveform, wireBit++, 1);
+		setPWMBit(PWMWaveform, wireBit++, 0); // just init it with 0
+		setPWMBit(PWMWaveform, wireBit++, 0);
 	}
 
 	printf("WS2812b init finished \n");
@@ -320,6 +320,20 @@ int LedDeviceWS2812b::write(const std::vector<ColorRgb> &ledValues)
 	struct control_data_s *ctl = (struct control_data_s *)virtbase;
 	dma_cb_t *cbp = ctl->cb;
 
+	unsigned int* writeLocation;
+	bool usingBuffer;
+
+	// check if dma needs more time, if yes use buffer to create bit pattern
+	if (dma_reg[DMA_CS] & (1<< DMA_CS_ACTIVE))
+	{
+		printf("Warning: WS2812b DMA not free, using buffer!\n");
+		writeLocation = PWMWaveform;
+		usingBuffer = true;
+	}else{
+		writeLocation = ctl->sample;
+		usingBuffer = false;
+	}
+
 	// change end of transimission data to 0s and restore old possition
 	// only do it if the length changed
 	if (mLedCount != oldSize)
@@ -366,6 +380,10 @@ int LedDeviceWS2812b::write(const std::vector<ColorRgb> &ledValues)
 	#endif
 				PWMWaveform[wordOffset+1] = 0x0; // clear next bit too
 			}
+
+			// if length changes always use buffer
+			writeLocation = PWMWaveform;
+			usingBuffer = true;
 		}
 	}
 
@@ -385,9 +403,9 @@ int LedDeviceWS2812b::write(const std::vector<ColorRgb> &ledValues)
 			wireBit +=3;
 
 			if (colorBits & (1 << j)) {
-				PWMWaveform[wordOffset] |= startbitPattern;
+				writeLocation[wordOffset] |= startbitPattern;
 			} else {
-				PWMWaveform[wordOffset] = arm_Bit_Clear_imm(PWMWaveform[wordOffset], startbitPattern);
+				writeLocation[wordOffset] = arm_Bit_Clear_imm(writeLocation[wordOffset], startbitPattern);
 			}
 
 			startbitPattern = arm_ror(startbitPattern, 3);
@@ -412,7 +430,7 @@ int LedDeviceWS2812b::write(const std::vector<ColorRgb> &ledValues)
 		for(int j=23; j>=0; j--) {
 
 			unsigned char colorBit = (colorBits & (1 << j)) ? 1 : 0; // Holds current bit out of colorBits to be processed
-			setPWMBit(wireBit, colorBit);
+			setPWMBit(writeLocation, wireBit, colorBit);
 			wireBit +=3;
 			/* old code for better understanding
 			switch(colorBit) {
@@ -434,18 +452,18 @@ int LedDeviceWS2812b::write(const std::vector<ColorRgb> &ledValues)
 
 	}
 
-	if (dma_reg[DMA_CS] & (1<< DMA_CS_ACTIVE))
-		{
-		printf("Warning: WS2812b DMA not free yet!\n");
+	if (usingBuffer){
+		if (dma_reg[DMA_CS] & (1<< DMA_CS_ACTIVE))
+			{
+			printf("Warning: WS2812b DMA still not free yet!\n");
 
-		while (dma_reg[DMA_CS] & (1<< DMA_CS_ACTIVE)){
-		}
+			while (dma_reg[DMA_CS] & (1<< DMA_CS_ACTIVE)){
+			}
 
-		usleep(60);
-		}
-
-	memcpy ( ctl->sample, PWMWaveform, cbp->length );
-
+			usleep(60);
+			}
+		memcpy ( ctl->sample, PWMWaveform, cbp->length );
+	}
 	// Enable DMA and PWM engines, which should now send the data
 	startTransfer();
 
@@ -637,7 +655,7 @@ void LedDeviceWS2812b::clearPWMBuffer()
 // The (31 - bitIdx) is so that we write the data backwards, correcting its endianness
 // This means getPWMBit will return something other than what was written, so it would be nice
 // if the logic that calls this function would figure it out instead. (However, that's trickier)
-void LedDeviceWS2812b::setPWMBit(unsigned int bitPos, unsigned char bit)
+void LedDeviceWS2812b::setPWMBit(unsigned int* writeLocation, unsigned int bitPos, unsigned char bit)
 {
 	// Fetch word the bit is in
 	unsigned int wordOffset = (int)(bitPos / 32);
@@ -646,10 +664,10 @@ void LedDeviceWS2812b::setPWMBit(unsigned int bitPos, unsigned char bit)
 	switch(bit)
 	{
 		case 1:
-			PWMWaveform[wordOffset] |= (1 << (31 - bitIdx));
+			writeLocation[wordOffset] |= (1 << (31 - bitIdx));
 			break;
 		case 0:
-			PWMWaveform[wordOffset] &= ~(1 << (31 - bitIdx));
+			writeLocation[wordOffset] &= ~(1 << (31 - bitIdx));
 			break;
 	}
 }
