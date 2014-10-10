@@ -312,8 +312,9 @@ int LedDeviceWS2812b::write(const std::vector<ColorRgb> &ledValues)
 	size_t oldSize = mLedCount; // save old size to see if it changed
 	mLedCount = ledValues.size();
 
-	// Read data from LEDBuffer[], translate it into wire format, and write to PWMWaveform
+#ifndef WS2812_ASM_OPTI
 	unsigned int wireBit = 1;			// Holds the current bit we will set in PWMWaveform, start with 1 and skip the other two for speed
+#endif
 
 	// Copy PWM waveform to DMA's data buffer
 	//printf("Copying %d words to DMA data buffer\n", NUM_DATA_WORDS);
@@ -400,7 +401,7 @@ int LedDeviceWS2812b::write(const std::vector<ColorRgb> &ledValues)
 		for(int j=23; j>=0; j--) {
 			// Fetch word the bit is in
 //			wordOffset = (int)(wireBit / 32);
-			wireBit +=3;
+			//wireBit +=3;
 
 			if (colorBits & (1 << j)) {
 				writeLocation[wordOffset] |= startbitPattern;
