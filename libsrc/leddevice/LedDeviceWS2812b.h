@@ -126,6 +126,22 @@ struct dma_cb_t
 	unsigned	pad[2];		// These are "reserved" (unused)
 };
 
+// Contains arrays of control blocks and their related samples.
+// One pixel needs 72 bits (24 bits for the color * 3 to represent them on the wire).
+// 		 768 words = 341.3 pixels
+// 		1024 words = 455.1 pixels
+// The highest I can make this number is 1016. Any higher, and it will start copying garbage to the
+// PWM controller. I think it might be because of the virtual->physical memory mapping not being
+// contiguous, so *pointer+1016 isn't "next door" to *pointer+1017 for some weird reason.
+// However, that's still enough for 451.5 color instructions! If someone has more pixels than that
+// to control, they can figure it out. I tried Hirst's message of having one CB per word, which
+// seems like it might fix that, but I couldn't figure it out.
+#define NUM_DATA_WORDS 1016
+struct control_data_s {
+	dma_cb_t cb[1];
+	uint32_t sample[NUM_DATA_WORDS];
+};
+
 ///
 /// Implementation of the LedDevice interface for writing to Ws2801 led device.
 ///
@@ -148,34 +164,21 @@ public:
 	/// Switch the leds off
 	virtual int switchOff();
 
-private:
 
-	/// the number of leds (needed when switching off)
+	/// the number of leds (needed when switching off), only public to allow testing
 	size_t mLedCount;
 
-	page_map_t *page_map;						// This will hold the page map, which we'll allocate
-	uint8_t *virtbase;					// Pointer to some virtual memory that will be allocated
+	// Pointer to some virtual memory that will be allocated, only public to allow testing
+	uint8_t *virtbase;
+private:
+	page_map_t *page_map; // This will hold the page map, which we'll allocate
 
 	volatile unsigned int *pwm_reg;		// PWM controller register set
 	volatile unsigned int *clk_reg;		// PWM clock manager register set
 	volatile unsigned int *dma_reg;		// DMA controller register set
 	volatile unsigned int *gpio_reg;		// GPIO pin controller register set
 
-	// Contains arrays of control blocks and their related samples.
-	// One pixel needs 72 bits (24 bits for the color * 3 to represent them on the wire).
-	// 		 768 words = 341.3 pixels
-	// 		1024 words = 455.1 pixels
-	// The highest I can make this number is 1016. Any higher, and it will start copying garbage to the
-	// PWM controller. I think it might be because of the virtual->physical memory mapping not being
-	// contiguous, so *pointer+1016 isn't "next door" to *pointer+1017 for some weird reason.
-	// However, that's still enough for 451.5 color instructions! If someone has more pixels than that
-	// to control, they can figure it out. I tried Hirst's message of having one CB per word, which
-	// seems like it might fix that, but I couldn't figure it out.
-	#define NUM_DATA_WORDS 1016
-	struct control_data_s {
-		dma_cb_t cb[1];
-		uint32_t sample[NUM_DATA_WORDS];
-	};
+
 
 	//struct control_data_s *ctl;
 
