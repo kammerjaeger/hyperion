@@ -28,19 +28,36 @@
 // These will be "memory mapped" into virtual RAM so that they can be written and read directly.
 // -------------------------------------------------------------------------------------------------
 
-//#define DMA_BASE			0x20007000
-#define DMA_BASE        	0x3f007000
+//static volatile unsigned int PI_PERI_BASE   = 0x20000000;
+//static volatile unsigned int DMA_BUS_ADR    = 0x40000000;
+
+//#define Pi_PERI_PHYS_BASE   0x20000000
+#define Pi_PERI_PHYS_BASE   0x3f000000
+#define PI_PERI_BUS_BASE    0x7e000000
+//#define DMA_BUS_ADR		0x40000000
+#define DMA_BUS_ADR			0xC0000000
+
+
+#define DMA_BASE_OFFSET		0x00007000
+#define DMA_BASE        	(Pi_PERI_PHYS_BASE + DMA_BASE_OFFSET)
 #define DMA_LEN				0x24
 #define DMA_CHANNEL_OFFSET  0x100
 #define DMA_LAST_DMA_OFFSET	14 * DMA_CHANNEL_OFFSET
-//#define PWM_BASE			0x2020C000
-#define PWM_BASE       		0x3f20C000
+
+#define PWM_BASE_OFFSET		0x0020C000
+#define PWM_BASE       		(Pi_PERI_PHYS_BASE + PWM_BASE_OFFSET)
 #define PWM_LEN				0x28
-//#define CLK_BASE	    	0x20101000
-#define CLK_BASE        	0x3f101000
+#define PWM_BUS_ADDR		(PI_PERI_BUS_BASE + PWM_BASE_OFFSET)
+//PWM_FIFO 6 * 4
+#define PWM_FIFO			0x18
+
+
+#define CLK_BASE_OFFSET    	0x00101000
+#define CLK_BASE        	(Pi_PERI_PHYS_BASE + CLK_BASE_OFFSET)
 #define CLK_LEN				0xA8
-//#define GPIO_BASE			0x20200000
-#define GPIO_BASE       	0x3f200000
+
+#define GPIO_BASE_OFFSET   	0x00200000
+#define GPIO_BASE       	(Pi_PERI_PHYS_BASE + GPIO_BASE_OFFSET)
 #define GPIO_LEN			0xB4
 
 
@@ -800,7 +817,7 @@ void LedDeviceWS2812b::initHardware()
 			fatal("Page %d not present (pfn 0x%016llx)\n", i, pfn);
 		}
 
-		page_map[i].physaddr = (unsigned int)pfn << PAGE_SHIFT | 0x40000000;
+		page_map[i].physaddr = (unsigned int)pfn << PAGE_SHIFT | DMA_BUS_ADR;
 		//printf("Page map #%2d: virtual %8p ==> physical 0x%08x [0x%016llx]\n", i, page_map[i].virtaddr, page_map[i].physaddr, pfn);
 	}
 
@@ -810,7 +827,7 @@ void LedDeviceWS2812b::initHardware()
 	struct control_data_s *ctl = (struct control_data_s *)virtbase;
 	dma_cb_t *cbp = ctl->cb;
 	// FIXME: Change this to use DEFINEs
-	unsigned int phys_pwm_fifo_addr = 0x7e20c000 + 0x18;
+	unsigned int phys_pwm_fifo_addr = PWM_BUS_ADDR + PWM_FIFO;
 
 	// No wide bursts, source increment, dest DREQ on line 5, wait for response, enable interrupt
 	cbp->info = DMA_TI_CONFIGWORD;
