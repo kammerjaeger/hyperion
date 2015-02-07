@@ -11,13 +11,16 @@ option(ENABLE_DISPMANX "Enable the RPi dispmanx grabber" ON)
 message(STATUS "ENABLE_DISPMANX = " ${ENABLE_DISPMANX})
 
 option(ENABLE_SPIDEV   "Enable the SPIDEV device" ON)
-message(STATUS "ENABLE_SPIDEV = " ${ENABLE_SPIDEV})
+message(STATUS "ENABLE_SPIDEV   = " ${ENABLE_SPIDEV})
 
 option(ENABLE_WS2812BPWM   "Enable the WS2812b-PWM device" OFF)
 message(STATUS "ENABLE_WS2812BPWM = " ${ENABLE_WS2812BPWM})
 
 option(ENABLE_V4L2 "Enable the V4L2 grabber" ON)
 message(STATUS "ENABLE_V4L2 = " ${ENABLE_V4L2})
+
+option(ENABLE_X11 "Enable the X11 grabber" OFF)
+message(STATUS "ENABLE_X11 = " ${ENABLE_X11})
 
 option(ENABLE_TINKERFORGE "Enable the TINKERFORGE device" ON)
 message(STATUS "ENABLE_TINKERFORGE = " ${ENABLE_TINKERFORGE})
@@ -28,6 +31,24 @@ message(STATUS "ENABLE_PROTOBUF = " ${ENABLE_PROTOBUF})
 if(ENABLE_V4L2 AND NOT ENABLE_PROTOBUF)
 	message(FATAL_ERROR "V4L2 grabber requires PROTOBUF. Disable V4L2 or enable PROTOBUF")
 endif(ENABLE_V4L2 AND NOT ENABLE_PROTOBUF)
+
+option(ENABLE_FB "Enable the framebuffer grabber" OFF)
+message(STATUS "ENABLE_FB = " ${ENABLE_FB})
+
+option(ENABLE_OSX "Enable the osx grabber" OFF)
+message(STATUS "ENABLE_OSX = " ${ENABLE_OSX})
+
+if(ENABLE_FB AND ENABLE_DISPMANX)
+	message(FATAL_ERROR "dispmanx grabber and framebuffer grabber cannot be used at the same time")
+endif(ENABLE_FB AND ENABLE_DISPMANX)
+
+if(ENABLE_FB AND ENABLE_OSX)
+	message(FATAL_ERROR "osx grabber and framebuffer grabber cannot be used at the same time")
+endif(ENABLE_FB AND ENABLE_OSX)
+
+if(ENABLE_OSX AND ENABLE_DISPMANX)
+	message(FATAL_ERROR "dispmanx grabber and osx grabber cannot be used at the same time")
+endif(ENABLE_OSX AND ENABLE_DISPMANX)
 
 # Createt the configuration file
 # configure a header file to pass some of the CMake settings
@@ -54,8 +75,8 @@ include_directories(${CMAKE_SOURCE_DIR}/include)
 # Prefer static linking over dynamic
 #set(CMAKE_FIND_LIBRARY_SUFFIXES ".a;.so")
 
-#set(CMAKE_BUILD_TYPE "Debug")
-set(CMAKE_BUILD_TYPE "Release")
+set(CMAKE_BUILD_TYPE "Debug")
+#set(CMAKE_BUILD_TYPE "Release")
 
 # enable C++11
 set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -std=c++0x -Wall")
@@ -63,15 +84,6 @@ set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -std=c++0x -Wall")
 
 # Configure the use of QT4
 find_package(Qt4 COMPONENTS QtCore QtGui QtNetwork REQUIRED QUIET)
-
-if (ENABLE_PROTOBUF)
-	# add protocol buffers (make sure to find the static version)
-	set(CMAKE_FIND_LIBRARY_SUFFIXES_OLD ${CMAKE_FIND_LIBRARY_SUFFIXES})
-	set(CMAKE_FIND_LIBRARY_SUFFIXES ".a")
-	find_package(Protobuf REQUIRED)
-	set(CMAKE_FIND_LIBRARY_SUFFIXES ${CMAKE_FIND_LIBRARY_SUFFIXES_OLD})
-	set(CMAKE_FIND_LIBRARY_SUFFIXES_OLD)
-endif (ENABLE_PROTOBUF)
 
 #add libusb and pthreads
 find_package(libusb-1.0 REQUIRED)
@@ -86,6 +98,10 @@ add_definitions(${QT_DEFINITIONS})
 # TODO[TvdZ]: This linking directory should only be added if we are cross compiling
 if(NOT APPLE)
 	link_directories(${CMAKE_FIND_ROOT_PATH}/lib/arm-linux-gnueabihf)
+endif()
+
+if(ENABLE_OSX)
+	set(CMAKE_EXE_LINKER_FLAGS "-framework CoreGraphics")
 endif()
 
 configure_file(bin/install_hyperion.sh ${LIBRARY_OUTPUT_PATH} @ONLY)

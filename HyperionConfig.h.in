@@ -17,3 +17,10 @@
 
 // Define to enable PROTOBUF server
 #cmakedefine ENABLE_PROTOBUF
+
+// Define to enable the framebuffer grabber
+#cmakedefine ENABLE_FB
+
+// Define to enable the osx grabber
+#cmakedefine ENABLE_OSX
+

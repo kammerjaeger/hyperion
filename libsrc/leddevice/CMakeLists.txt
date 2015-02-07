@@ -15,6 +15,7 @@ include_directories(
 SET(Leddevice_QT_HEADERS
 		${CURRENT_SOURCE_DIR}/LedRs232Device.h
 		${CURRENT_SOURCE_DIR}/LedDeviceAdalight.h
+		${CURRENT_SOURCE_DIR}/LedDeviceAmbiLed.h
 		${CURRENT_SOURCE_DIR}/LedDevicePhilipsHue.h
 )
 
@@ -38,6 +39,7 @@ SET(Leddevice_SOURCES
 		${CURRENT_SOURCE_DIR}/LedRs232Device.cpp
 
 		${CURRENT_SOURCE_DIR}/LedDeviceAdalight.cpp
+		${CURRENT_SOURCE_DIR}/LedDeviceAmbiLed.cpp
 		${CURRENT_SOURCE_DIR}/LedDeviceLightpack.cpp
 		${CURRENT_SOURCE_DIR}/LedDeviceMultiLightpack.cpp
 		${CURRENT_SOURCE_DIR}/LedDevicePaintpack.cpp
@@ -57,6 +59,7 @@ if(ENABLE_SPIDEV)
 			${CURRENT_SOURCE_DIR}/LedDeviceLpd8806.h
 			${CURRENT_SOURCE_DIR}/LedDeviceP9813.h
 			${CURRENT_SOURCE_DIR}/LedDeviceWs2801.h
+			${CURRENT_SOURCE_DIR}/LedDeviceAPA102.h
 	)
 	SET(Leddevice_SOURCES
 			${Leddevice_SOURCES}
@@ -65,6 +68,7 @@ if(ENABLE_SPIDEV)
 			${CURRENT_SOURCE_DIR}/LedDeviceLpd8806.cpp
 			${CURRENT_SOURCE_DIR}/LedDeviceP9813.cpp
 			${CURRENT_SOURCE_DIR}/LedDeviceWs2801.cpp
+			${CURRENT_SOURCE_DIR}/LedDeviceAPA102.cpp
 	)
 endif(ENABLE_SPIDEV)
 

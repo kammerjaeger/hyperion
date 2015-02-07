@@ -14,6 +14,7 @@
 	#include "LedDeviceLpd8806.h"
 	#include "LedDeviceP9813.h"
 	#include "LedDeviceWs2801.h"
+	#include "LedDeviceAPA102.h"
 #endif
 
 #ifdef ENABLE_TINKERFORGE
@@ -21,6 +22,7 @@
 #endif
 
 #include "LedDeviceAdalight.h"
+#include "LedDeviceAmbiLed.h"
 #include "LedDeviceLightpack.h"
 #include "LedDeviceMultiLightpack.h"
 #include "LedDevicePaintpack.h"
@@ -55,6 +57,17 @@ LedDevice * LedDeviceFactory::construct(const Json::Value & deviceConfig)
 
 		device = deviceAdalight;
 	}
+	else if (type == "ambiled")
+	{
+		const std::string output = deviceConfig["output"].asString();
+		const unsigned rate      = deviceConfig["rate"].asInt();
+		const int delay_ms       = deviceConfig["delayAfterConnect"].asInt();
+
+		LedDeviceAmbiLed* deviceAmbiLed = new LedDeviceAmbiLed(output, rate, delay_ms);
+		deviceAmbiLed->open();
+
+		device = deviceAmbiLed;
+	}
 #ifdef ENABLE_SPIDEV
 	else if (type == "lpd6803" || type == "ldp6803")
 	{
@@ -85,6 +98,16 @@ LedDevice * LedDeviceFactory::construct(const Json::Value & deviceConfig)
 		deviceP9813->open();
 
 		device = deviceP9813;
+	}
+	else if (type == "apa102")
+	{
+		const std::string output = deviceConfig["output"].asString();
+		const unsigned rate      = deviceConfig["rate"].asInt();
+
+		LedDeviceAPA102* deviceAPA102 = new LedDeviceAPA102(output, rate);
+		deviceAPA102->open();
+
+		device = deviceAPA102;
 	}
 	else if (type == "ws2801" || type == "lightberry")
 	{
@@ -169,8 +192,10 @@ LedDevice * LedDeviceFactory::construct(const Json::Value & deviceConfig)
 	else if (type == "philipshue")
 	{
 		const std::string output = deviceConfig["output"].asString();
+		const std::string username = deviceConfig.get("username", "newdeveloper").asString();
 		const bool switchOffOnBlack = deviceConfig.get("switchOffOnBlack", true).asBool();
-		device = new LedDevicePhilipsHue(output, switchOffOnBlack);
+		const int transitiontime = deviceConfig.get("transitiontime", 1).asInt();
+		device = new LedDevicePhilipsHue(output, username, switchOffOnBlack, transitiontime);
 	}
 	else if (type == "test")
 	{
