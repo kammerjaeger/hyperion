@@ -60,7 +60,7 @@ void printBinary(unsigned int i, unsigned int bits) {
 }
 
 void testColorVector(LedDeviceWS2812b * ledDevice, std::vector<ColorRgb> * buff, const char* runName){
-	printf("Running test: %s\n", runName);
+	//printf("Running test: %s\n", runName);
 	unsigned int ledCnt = buff->size();
 	ledDevice->write(*buff);
 	struct control_data_s *ctl = (struct control_data_s *) ledDevice->virtbase;
@@ -120,7 +120,7 @@ void testColorVector(LedDeviceWS2812b * ledDevice, std::vector<ColorRgb> * buff,
 		}
 	}
 
-//	if (ctl->sample[compareBuff.size()] != 0){
+//	if (ctl->sample[compareBuff.size()] != 0x0){
 //		printf("Error on position %d (after last used)\n", compareBuff.size());
 //		printf("Expected: ");
 //		printBinary(0, 32);
@@ -160,41 +160,73 @@ int main(int argc, char** argv)
 	testColorVector(ledDevice, buff, "RED");
 	delete buff;
 
+	sleep(1);
+
 	buff = new std::vector<ColorRgb>(ledCnt + 5, ColorRgb::BLUE);
 	testColorVector(ledDevice, buff, "BLUE");
 	delete buff;
+
+	sleep(1);
 
 	buff = new std::vector<ColorRgb>(ledCnt - 4, ColorRgb::GREEN);
 	testColorVector(ledDevice, buff, "GREEN");
 	delete buff;
 
+	sleep(1);
+
 	buff = new std::vector<ColorRgb>(ledCnt + 1, ColorRgb::YELLOW);
 	testColorVector(ledDevice, buff, "YELLOW");
 	delete buff;
+
+	sleep(1);
 
 	buff = new std::vector<ColorRgb>(ledCnt - 1, ColorRgb::WHITE);
 	testColorVector(ledDevice, buff, "WHITE");
 	delete buff;
 
+	sleep(1);
+
 	buff = new std::vector<ColorRgb>(ledCnt + 1, ColorRgb::YELLOW);
 	testColorVector(ledDevice, buff, "YELLOW2");
 	delete buff;
+
+	sleep(1);
 
 	buff = new std::vector<ColorRgb>(ledCnt, ColorRgb::GREEN);
 	testColorVector(ledDevice, buff, "GREEN2");
 	delete buff;
 
+	sleep(1);
+
 	buff = new std::vector<ColorRgb>(ledCnt + 1, ColorRgb::BLUE);
 	testColorVector(ledDevice, buff, "BLUE2");
 	delete buff;
+
+	sleep(1);
 
 	buff = new std::vector<ColorRgb>(ledCnt -1, ColorRgb::RED);
 	testColorVector(ledDevice, buff, "RED3");
 	delete buff;
 
+	sleep(1);
+
+//	buff = new std::vector<ColorRgb>(ledCnt -1, ColorRgb::BLACK);
+//	for (unsigned int i = 0; i < buff->size(); i++){
+//		buff->at(i) = ColorRgb::YELLOW;
+//		testColorVector(ledDevice, buff, "Counting");
+//	}
+//	delete buff;
+
+	sleep(1);
+
+	buff = new std::vector<ColorRgb>(ledCnt +5, ColorRgb::BLACK);
+	testColorVector(ledDevice, buff, "BLACK");
+	delete buff;
+
 	delete ledDevice;
 
 	printf("Tests finished!\n");
+	printf("All LEDs should be black!\n");
 	return 0;
 }
 

@@ -175,6 +175,7 @@ private:
 
 	volatile unsigned int *pwm_reg;		// PWM controller register set
 	volatile unsigned int *clk_reg;		// PWM clock manager register set
+	volatile unsigned int *dma_reg_map;	// DMA controller register mapped memory
 	volatile unsigned int *dma_reg;		// DMA controller register set
 	volatile unsigned int *gpio_reg;		// GPIO pin controller register set
 
@@ -191,13 +192,14 @@ private:
 	void startTransfer();
 
 	void clearPWMBuffer();
-	void setPWMBit(unsigned int bitPos, unsigned char bit);
+	void setPWMBit(unsigned int* writeLocation, unsigned int bitPos, unsigned char bit);
 
 	unsigned int mem_phys_to_virt(uint32_t phys);
 	unsigned int mem_virt_to_phys(void *virt);
 	void terminate(int dummy);
 	void fatal(const char *fmt, ...);
 	void * map_peripheral(uint32_t base, uint32_t len);
+	void unmap_peripheral(void * base, uint32_t len);
 	void printBinary(unsigned int i, unsigned int bits);
 
 #ifdef BENCHMARK
