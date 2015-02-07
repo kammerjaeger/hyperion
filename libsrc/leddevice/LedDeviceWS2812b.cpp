@@ -38,17 +38,17 @@
 
 // GPIO
 // -------------------------------------------------------------------------------------------------
-#define GPFSEL0			0x20200000			// GPIO function select, pins 0-9 (bits 30-31 reserved)
-#define GPFSEL1			0x20200004			// Pins 10-19
-#define GPFSEL2			0x20200008			// Pins 20-29
-#define GPFSEL3			0x2020000C			// Pins 30-39
-#define GPFSEL4			0x20200010			// Pins 40-49
-#define GPFSEL5			0x20200014			// Pins 50-53
-#define GPSET0			0x2020001C			// Set (turn on) pin
-#define GPCLR0			0x20200028			// Clear (turn off) pin
-#define GPPUD			0x20200094			// Internal pullup/pulldown resistor control
-#define GPPUDCLK0		0x20200098			// PUD clock for pins 0-31
-#define GPPUDCLK1		0x2020009C			// PUD clock for pins 32-53
+#define GPFSEL0			GPIO_BASE + 0x00			// GPIO function select, pins 0-9 (bits 30-31 reserved)
+#define GPFSEL1			GPIO_BASE + 0x04			// Pins 10-19
+#define GPFSEL2			GPIO_BASE + 0x08			// Pins 20-29
+#define GPFSEL3			GPIO_BASE + 0x0C			// Pins 30-39
+#define GPFSEL4			GPIO_BASE + 0x10			// Pins 40-49
+#define GPFSEL5			GPIO_BASE + 0x14			// Pins 50-53
+#define GPSET0			GPIO_BASE + 0x1C			// Set (turn on) pin
+#define GPCLR0			GPIO_BASE + 0x28			// Clear (turn off) pin
+#define GPPUD			GPIO_BASE + 0x94			// Internal pullup/pulldown resistor control
+#define GPPUDCLK0		GPIO_BASE + 0x98			// PUD clock for pins 0-31
+#define GPPUDCLK1		GPIO_BASE + 0x9C			// PUD clock for pins 32-53
 
 // Memory offsets for the PWM clock register, which is undocumented! Please fix that, Broadcom!
 // -------------------------------------------------------------------------------------------------
