@@ -8,6 +8,8 @@
 #include <iostream>
 #include <vector>
 
+#include <stdio.h>
+
 // Local includes
 #include <utils/ColorRgb.h>
 
@@ -60,8 +62,8 @@ void printBinary(unsigned int i, unsigned int bits) {
 }
 
 void testColorVector(LedDeviceWS2812b * ledDevice, std::vector<ColorRgb> * buff, const char* runName){
-	//printf("Running test: %s\n", runName);
 	unsigned int ledCnt = buff->size();
+	printf("Running test: %s, LEDs %i, Color (r %u g %u b %u)\n", runName, ledCnt, buff->at(0).red, buff->at(0).green, buff->at(0).blue);
 	ledDevice->write(*buff);
 	struct control_data_s *ctl = (struct control_data_s *) ledDevice->virtbase;
 
@@ -119,7 +121,9 @@ void testColorVector(LedDeviceWS2812b * ledDevice, std::vector<ColorRgb> * buff,
 			printf("\n");
 		}
 	}
-
+	printf("Test %s finished!\n", runName);
+	printf("Press 'Enter' to continue.\n");
+	getchar();
 //	if (ctl->sample[compareBuff.size()] != 0x0){
 //		printf("Error on position %d (after last used)\n", compareBuff.size());
 //		printf("Expected: ");
@@ -150,7 +154,7 @@ int main(int argc, char** argv)
 	signal(SIGTERM, &signal_handler);
 	signal(SIGINT,  &signal_handler);
 
-	unsigned ledCnt = 20;
+	unsigned ledCnt = 70;
 	std::vector<ColorRgb> * buff;
 
 	printf("Stating tests\n");
@@ -208,7 +212,7 @@ int main(int argc, char** argv)
 	testColorVector(ledDevice, buff, "RED3");
 	delete buff;
 
-	sleep(1);
+	//sleep(1);
 
 //	buff = new std::vector<ColorRgb>(ledCnt -1, ColorRgb::BLACK);
 //	for (unsigned int i = 0; i < buff->size(); i++){
